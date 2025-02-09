@@ -1,7 +1,6 @@
 # ehaldhar
 
-Smart India Hackathon 2024 
-Problem Statement :- Mobile App for Direct Market Access for Farmers
+Smart India Hackathon 2024 ...... Problem Statement :- Mobile App for Direct Market Access for Farmers
 
 
 ## Getting Started
