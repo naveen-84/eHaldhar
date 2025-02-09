@@ -1,6 +1,9 @@
 # ehaldhar
 
-Agriculture Project 
+Smart India Hackathon 2024 
+Problem Statement :- Mobile App for Direct Market Access for Farmers
+
+
 ## Getting Started
 
 This project is a starting point for a Flutter application.
