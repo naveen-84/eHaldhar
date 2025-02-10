@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "145478012789",
+    "project_id": "ehaldhar-369fe",
+    "storage_bucket": "ehaldhar-369fe.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:145478012789:android:076d17e017d9c7bcfb0d3c",
+        "android_client_info": {
+          "package_name": "com.example.ehaldhar"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDFjru2stBOUOOCpYRheSOIEnHzryJIq3c"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-import 'package:google_sign_in/google_sign_in.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_facebook_auth/flutter_facebook_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'home_page.dart'; // Import Home Page
 import 'login_page.dart'; // Import Login Page
 
@@ -52,69 +54,72 @@ class _SignUpPageState extends State<SignUpPage> {
   }
 
   Future<void> _registerUser() async {
-    var url = 'http://192.168.10.195:5000/signup'; // Backend URL
-    var requestBody = json.encode({
-      'username': _nameController.text.trim(),
-      'mobile': _mobileController.text.trim(),
-      'email': _emailController.text.trim(),
-      'password': _passwordController.text.trim(),
-      'category': _selectedUserCategory,
-    });
-
-    print("Request Body: $requestBody"); // Debugging
-
     try {
-      var response = await http.post(
-        Uri.parse(url),
-        headers: {'Content-Type': 'application/json'},
-        body: requestBody,
+      UserCredential userCredential =
+          await FirebaseAuth.instance.createUserWithEmailAndPassword(
+        email: _emailController.text.trim(),
+        password: _passwordController.text.trim(),
       );
 
-      print("Response Code: ${response.statusCode}");
-      print("Response Body: ${response.body}");
+      // Get the registered user's ID
+      String uid = userCredential.user!.uid;
 
-      if (response.statusCode == 200) {
-        print('User registered successfully');
-        Navigator.pushAndRemoveUntil(
-          context,
-          MaterialPageRoute(builder: (context) => HomePage()),
-          (route) => false,
-        );
-      } else {
-        print('Failed to register user: ${response.body}');
-        _showErrorDialog('Registration failed. Please try again.');
-      }
-    } catch (e) {
-      print('Error: $e');
-      _showErrorDialog('An error occurred. Please check your connection.');
+      // Store additional user details in Firestore
+      await FirebaseFirestore.instance.collection('users').doc(uid).set({
+        'name': _nameController.text.trim(),
+        'mobile': _mobileController.text.trim(),
+        'email': _emailController.text.trim(),
+        'category': _selectedUserCategory,
+      });
+
+      // Navigate to Home Page
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (context) => HomePage()),
+        (route) => false,
+      );
+    } catch (error) {
+      _showErrorDialog("Registration failed: ${error.toString()}");
     }
   }
 
   Future<void> _signInWithGoogle() async {
-    setState(() {
-      _isSigningInWithGoogle = true;
-    });
-
     try {
-      await _googleSignIn.signIn();
-      // Once signed in, you can use the details to register the user
-      print("Google sign-in successful");
-      _registerUser();
+      final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
+      if (googleUser == null) return;
+
+      final GoogleSignInAuthentication googleAuth =
+          await googleUser.authentication;
+      final AuthCredential credential = GoogleAuthProvider.credential(
+        accessToken: googleAuth.accessToken,
+        idToken: googleAuth.idToken,
+      );
+
+      await FirebaseAuth.instance.signInWithCredential(credential);
+
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (context) => HomePage()),
+        (route) => false,
+      );
     } catch (error) {
       print("Google sign-in error: $error");
-    } finally {
-      setState(() {
-        _isSigningInWithGoogle = false;
-      });
     }
   }
 
   Future<void> _signInWithFacebook() async {
-    final result = await FacebookAuth.instance.login();
+    final LoginResult result = await FacebookAuth.instance.login();
+
     if (result.status == LoginStatus.success) {
-      // Once signed in, you can use the details to register the user
-      print("Facebook sign-in successful");
-      _registerUser();
+      final AuthCredential credential =
+          FacebookAuthProvider.credential(result.accessToken!.token);
+      await FirebaseAuth.instance.signInWithCredential(credential);
+
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (context) => HomePage()),
+        (route) => false,
+      );
     } else {
       print("Facebook sign-in error: ${result.message}");
     }
