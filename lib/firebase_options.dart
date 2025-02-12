@@ -85,4 +85,5 @@ class DefaultFirebaseOptions {
     storageBucket: 'ehaldhar-369fe.firebasestorage.app',
     measurementId: 'G-7KR7NCGH0N',
   );
+
 }
