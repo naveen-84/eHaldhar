@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:convert'; // Import JSON encoding/decoding utilities
-import 'home_page.dart'; // Import Home Page
-import 'signup_page.dart'; // Import SignUp Page
+import '../HomeScreen/home_page.dart'; // Import Home Page
+import '../SignUpScreen/signup_page.dart'; // Import SignUp Page
 
 class LoginPage extends StatefulWidget {
   @override

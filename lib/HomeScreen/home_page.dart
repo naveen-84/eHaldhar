@@ -7,13 +7,13 @@ import 'weather_page.dart';
 import 'mandi_page.dart';
 import 'cart_page.dart';
 import 'blog_page.dart';
-import 'categories_page.dart'; // ✅ Import Categories Page
-import 'crop_doctor_page.dart'; // ✅ Import Crop Doctor Page
-import 'sell_crop_page.dart';
-import 'buyer_page.dart';
-import 'add_product_page.dart';
-import 'crop_care_page.dart';
-import 'crop_protection_page.dart';
+import '../CategorieScreen/categories_page.dart'; // ✅ Import Categories Page
+import '../CropDoctor/crop_doctor_page.dart'; // ✅ Import Crop Doctor Page
+import '../CropSell/sell_crop_page.dart';
+import '../buyer_page.dart';
+import '../AddProduct/add_product_page.dart';
+import '../CropCare/crop_care_page.dart';
+import '../CropProtection/crop_protection_page.dart';
 
 class Product {
   final int id;

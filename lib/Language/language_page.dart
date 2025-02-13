@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'signup_page.dart'; // Import your next page
+import '../SignUpScreen/signup_page.dart'; // Import your next page
 
 class LanguagePage extends StatefulWidget {
   @override

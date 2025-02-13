@@ -3,8 +3,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:flutter_facebook_auth/flutter_facebook_auth.dart';
-import 'home_page.dart';
-import 'login_page.dart';
+import '../HomeScreen/home_page.dart';
+import '../LoginScreen/login_page.dart';
 
 class SignUpPage extends StatefulWidget {
   @override
@@ -15,6 +15,8 @@ class _SignUpPageState extends State<SignUpPage> {
   final _formKey = GlobalKey<FormState>();
   final _categories = ["Admin", "Farmer", "Vendor"];
   String? _selectedUserCategory;
+  bool _isPasswordVisible = false;
+  bool _isConfirmPasswordVisible = false;
 
   final _nameController = TextEditingController();
   final _mobileController = TextEditingController();
@@ -44,7 +46,22 @@ class _SignUpPageState extends State<SignUpPage> {
   Future<void> _registerUser() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _isLoading = true);
+
     try {
+      // Check if the mobile number is already registered
+      QuerySnapshot querySnapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .where('mobile', isEqualTo: _mobileController.text.trim())
+          .get();
+
+      if (querySnapshot.docs.isNotEmpty) {
+        _showErrorDialog(
+            "This mobile number is already registered. Please log in.");
+        setState(() => _isLoading = false);
+        return;
+      }
+
+      // Proceed with registration if mobile number is unique
       UserCredential userCredential =
           await FirebaseAuth.instance.createUserWithEmailAndPassword(
         email: _emailController.text.trim(),
@@ -59,12 +76,18 @@ class _SignUpPageState extends State<SignUpPage> {
         'category': _selectedUserCategory,
       });
 
+      // Navigate to HomePage after successful registration
       Navigator.pushAndRemoveUntil(
-          context,
-          MaterialPageRoute(builder: (context) => HomePage()),
-          (route) => false);
-    } catch (e) {
-      _showErrorDialog("Registration failed: ${e.toString()}");
+        context,
+        MaterialPageRoute(builder: (context) => HomePage()),
+        (route) => false,
+      );
+    } on FirebaseAuthException catch (e) {
+      if (e.code == 'email-already-in-use') {
+        _showErrorDialog("This email is already registered. Please log in.");
+      } else {
+        _showErrorDialog("Registration failed: ${e.message}");
+      }
     } finally {
       setState(() => _isLoading = false);
     }
@@ -73,20 +96,23 @@ class _SignUpPageState extends State<SignUpPage> {
   Future<void> _signInWithGoogle() async {
     try {
       final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
-      if (googleUser == null) return;
+      if (googleUser == null) return; // User canceled sign-in
 
       final GoogleSignInAuthentication googleAuth =
           await googleUser.authentication;
+
       final AuthCredential credential = GoogleAuthProvider.credential(
         accessToken: googleAuth.accessToken,
         idToken: googleAuth.idToken,
       );
 
       await FirebaseAuth.instance.signInWithCredential(credential);
+
       Navigator.pushAndRemoveUntil(
-          context,
-          MaterialPageRoute(builder: (context) => HomePage()),
-          (route) => false);
+        context,
+        MaterialPageRoute(builder: (context) => HomePage()),
+        (route) => false,
+      );
     } catch (e) {
       _showErrorDialog("Google sign-in failed: ${e.toString()}");
     }
@@ -95,14 +121,18 @@ class _SignUpPageState extends State<SignUpPage> {
   Future<void> _signInWithFacebook() async {
     try {
       final LoginResult result = await FacebookAuth.instance.login();
+
       if (result.status == LoginStatus.success) {
         final AuthCredential credential =
             FacebookAuthProvider.credential(result.accessToken!.token);
+
         await FirebaseAuth.instance.signInWithCredential(credential);
+
         Navigator.pushAndRemoveUntil(
-            context,
-            MaterialPageRoute(builder: (context) => HomePage()),
-            (route) => false);
+          context,
+          MaterialPageRoute(builder: (context) => HomePage()),
+          (route) => false,
+        );
       } else {
         _showErrorDialog("Facebook sign-in failed: ${result.message}");
       }
@@ -119,8 +149,17 @@ class _SignUpPageState extends State<SignUpPage> {
         content: Text(message),
         actions: [
           TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('OK'))
+            onPressed: () {
+              Navigator.of(context).pop(); // Close dialog
+              if (message.contains("already registered")) {
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(builder: (context) => LoginPage()),
+                );
+              }
+            },
+            child: const Text('OK'),
+          ),
         ],
       ),
     );
@@ -159,10 +198,10 @@ class _SignUpPageState extends State<SignUpPage> {
                 _buildTextField(_emailController, Icons.email, "Email",
                     _validateEmail, TextInputType.emailAddress),
                 const SizedBox(height: 5),
-                _buildPasswordField(_passwordController, "Password"),
+                _buildPasswordField(_passwordController, "Password", false),
                 const SizedBox(height: 5),
                 _buildPasswordField(
-                    _confirmPasswordController, "Confirm Password"),
+                    _confirmPasswordController, "Confirm Password", true),
                 const SizedBox(height: 20),
                 _isLoading ? CircularProgressIndicator() : _buildSignUpButton(),
                 const SizedBox(height: 20),
@@ -173,15 +212,16 @@ class _SignUpPageState extends State<SignUpPage> {
                       MaterialPageRoute(builder: (context) => LoginPage())),
                   child: RichText(
                     text: const TextSpan(
-                        text: "Already have an account? ",
-                        style: TextStyle(color: Colors.black),
-                        children: [
-                          TextSpan(
-                              text: "Log in",
-                              style: TextStyle(
-                                  color: Colors.blue,
-                                  fontWeight: FontWeight.bold))
-                        ]),
+                      text: "Already have an account? ",
+                      style: TextStyle(color: Colors.black),
+                      children: [
+                        TextSpan(
+                          text: "Log in",
+                          style: TextStyle(
+                              color: Colors.blue, fontWeight: FontWeight.bold),
+                        )
+                      ],
+                    ),
                   ),
                 ),
               ],
@@ -228,9 +268,9 @@ class _SignUpPageState extends State<SignUpPage> {
     );
   }
 
-  Widget _buildPasswordField(TextEditingController controller, String hint) {
-    return _buildTextField(controller, Icons.lock, hint, _validatePassword);
-  }
+  // Widget _buildPasswordField(TextEditingController controller, String hint) {
+  //   return _buildTextField(controller, Icons.lock, hint, _validatePassword);
+  // }
 
   Widget _buildSignUpButton() {
     return ElevatedButton(
@@ -250,19 +290,59 @@ class _SignUpPageState extends State<SignUpPage> {
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         ElevatedButton.icon(
-          onPressed: () {}, // Implement Google login
+          onPressed: _signInWithGoogle, // ✅ Call the Google sign-in function
           style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
           icon: Icon(Icons.login, color: Colors.white),
           label: Text("Google", style: TextStyle(color: Colors.white)),
         ),
         SizedBox(width: 10),
         ElevatedButton.icon(
-          onPressed: () {}, // Implement Facebook login
+          onPressed:
+              _signInWithFacebook, // ✅ Call the Facebook sign-in function
           style: ElevatedButton.styleFrom(backgroundColor: Colors.blue),
           icon: Icon(Icons.facebook, color: Colors.white),
           label: Text("Facebook", style: TextStyle(color: Colors.white)),
         ),
       ],
+    );
+  }
+
+  Widget _buildPasswordField(
+      TextEditingController controller, String hint, bool isConfirm) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: TextFormField(
+        controller: controller,
+        obscureText:
+            isConfirm ? !_isConfirmPasswordVisible : !_isPasswordVisible,
+        decoration: InputDecoration(
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+          labelText: hint,
+          fillColor: Colors.white,
+          filled: true,
+          suffixIcon: IconButton(
+            icon: Icon(
+              isConfirm
+                  ? (_isConfirmPasswordVisible
+                      ? Icons.visibility
+                      : Icons.visibility_off)
+                  : (_isPasswordVisible
+                      ? Icons.visibility
+                      : Icons.visibility_off),
+            ),
+            onPressed: () {
+              setState(() {
+                if (isConfirm) {
+                  _isConfirmPasswordVisible = !_isConfirmPasswordVisible;
+                } else {
+                  _isPasswordVisible = !_isPasswordVisible;
+                }
+              });
+            },
+          ),
+        ),
+        validator: _validatePassword,
+      ),
     );
   }
 
@@ -276,10 +356,10 @@ class _SignUpPageState extends State<SignUpPage> {
 
   // Password validation
   String? _validatePassword(String? value) {
-    if (value == null || value.length < 6) return 'Password too short';
-    if (_confirmPasswordController.text.isNotEmpty &&
-        value != _confirmPasswordController.text) {
-      return 'Passwords do not match';
+    if (value == null || value.isEmpty) return 'Enter password';
+    if (value.length < 6) return 'Password must be at least 6 characters';
+    if (!RegExp(r'^(?=.*[A-Z])(?=.*\d)').hasMatch(value)) {
+      return 'Include at least 1 uppercase letter & 1 number';
     }
     return null;
   }
